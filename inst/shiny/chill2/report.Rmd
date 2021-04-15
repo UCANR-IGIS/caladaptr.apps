@@ -1,0 +1,303 @@
+---
+title: "Projected Chill Report"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+params:
+  bookmark_url: NA
+  rpt_opts: NA
+  site_info_lst: NA
+  model_settings_lst: NA
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(htmltools)
+library(dplyr)
+
+conflicted::conflict_prefer("filter", "dplyr", quiet = TRUE)
+conflicted::conflict_prefer("count", "dplyr", quiet = TRUE)
+conflicted::conflict_prefer("select", "dplyr", quiet = TRUE)
+
+# NOT SURE IF THESE ARE NEEDED HERE (THEY'RE ALSO IN APP.R)
+# requireNamespace("conflicted")
+# requireNamespace(leaflet)
+# requireNamespace(tidyr)
+# requireNamespace("DT")
+# requireNamespace(kableExtra) ## -- taken out, was the cause of error
+
+# This doesn't display anything, but you need this code to conduct the magic dependencies attaching...
+DT::datatable(matrix(), extensions = 'Buttons', class = "display")
+```
+
+```{css echo = FALSE}
+h1 {
+  color:darkgreen;
+  font-size:24px;
+  font-weight:bold;
+  border-top:1px solid gray;
+  padding-top:10px;
+}
+h2 {
+  color:OliveDrab;
+  font-size:20px;
+  font-weight:bold;
+  margin-top:2em;
+}
+
+div.gg-plot {
+  padding:10px;
+  margin-left:20px;
+}
+div.dt-buttons {
+  margin-top:5px;
+  float:right;
+}
+```
+
+\
+
+# Settings
+
+```{r loc_leaflet, echo=FALSE, results = 'asis'}
+if ("loc_map" %in% params$rpt_opts) {
+  
+  print(h2("Locations"))
+  
+  locs_df <- NULL
+  for (i in 1:length(params$site_info_lst)) {
+    locs_df <- rbind(locs_df,
+                     data.frame(site = params$site_info_lst[[i]]$site_name, 
+                                lon = params$site_info_lst[[i]]$site_coords[1], 
+                                lat = params$site_info_lst[[i]]$site_coords[2]))
+  }
+
+  leaflet::leaflet(locs_df) %>% 
+  leaflet::addTiles() %>%
+  leaflet::addCircleMarkers(lng = locs_df[,2,drop=TRUE], 
+                            lat = locs_df[,3,drop=TRUE], 
+                            label = ~htmlEscape(locs_df[,1,drop=TRUE]))
+}
+```
+
+## Climate Data
+
+```{r echo = FALSE, results = 'asis', eval = TRUE}
+tbl_vec <- c("Baseline", 
+             paste(params$model_settings_lst$base_year, collapse = " - "),
+             paste(params$model_settings_lst$base_scenario, collapse = ", "),
+             paste(params$model_settings_lst$base_gcm, collapse = ", "),
+             "Future",
+             paste(params$model_settings_lst$prj_year, collapse = " - "),
+             paste(params$model_settings_lst$prj_scenario, collapse = ", "),
+             paste(params$model_settings_lst$prj_gcm, collapse = ", "))
+             
+tbl_mat <- matrix(tbl_vec, byrow=TRUE, ncol=4, 
+                  dimnames=list(1:(length(tbl_vec)/4), c("Period", "Years", "Emissions Scenario(s)", "GCMs")))
+
+knitr::kable(tbl_mat, format = "html") %>% kableExtra::kable_styling()
+```
+
+```{r bookmark_show, echo=FALSE, results = 'asis'}
+if (!is.na(params$bookmark_url)) {
+  
+  print(h2("Repeat Analysis Link"))
+  
+  # print(p(a(span("Bookmark Link", ), href=params$bookmark_url)))
+  
+  print(HTML(paste0("<p><a href=\"", params$bookmark_url, "\"><span class=\"glyphicon glyphicon-link\"></span> Bookmark Link</a></p>")))
+  
+}
+```
+
+\
+
+```{r echo = FALSE, warning = FALSE, message=FALSE, results = 'asis', fig.width = 4.5, fig.asp = 0.8}
+
+for (i in 1:length(params$site_info_lst)) {
+  
+  print(h1(params$site_info_lst[[i]]$site_name, class="sitename"))
+  
+  print(p(paste0("(", paste0(params$site_info_lst[[i]]$site_coords, collapse = ", "), ")")))
+  
+  ################ EOS CHILL HISTOGRAMS ##########################
+  if ("chill_dist_hist" %in% params$rpt_opts) {
+    
+    print(h2("Chill Distribution"))
+    
+    print(p("The histograms below show the distribution of total accumulated chill 
+       portions for each projected growing season. The vertical red line represents the ",
+       strong("safe chill"), " level you can expect ",
+       strong(paste0(paste0(params$model_settings_lst$safe_chill, "% "))), " of the time."))
+  
+    if (!is.na(params$site_info_lst[[i]]$gg_base_eos_chill)) {
+      print(HTML("<div class='gg-plot'>"))
+      print(params$site_info_lst[[i]]$gg_base_eos_chill)
+      print(HTML("</div>"))
+    }
+    
+    if (!is.na(params$site_info_lst[[i]]$gg_rcp45_eos_chill)) {
+      print(HTML("<div class='gg-plot'>"))
+      print(params$site_info_lst[[i]]$gg_rcp45_eos_chill)
+      print(HTML("</div>"))
+    }
+    
+    if (!is.na(params$site_info_lst[[i]]$gg_rcp85_eos_chill)) {
+      print(HTML("<div class='gg-plot'>"))
+      print(params$site_info_lst[[i]]$gg_rcp85_eos_chill)
+      print(HTML("</div>"))
+    }
+    
+  } ## if "req_chill_tbl" %in% params$rpt_opts
+  
+  ################ SAFE CHILL TABLE ##########################
+  if ("safe_chill_tbl" %in% params$rpt_opts) {
+    print(h2("Safe Chill"))
+    
+    print(p("The table below shows the minimum chill portions that can be expected ", 
+                 strong(paste0(params$model_settings_lst$safe_chill, "% ")), 
+                 " of the time for each time period and emissions scenario."))
+  
+    print(tagList(DT::datatable(params$site_info_lst[[i]]$safe_chill_tbl %>% 
+                  mutate(safe_chill = round(.data$safe_chill, 2)), 
+                rownames= FALSE, 
+                extensions = 'Buttons',
+                options = list(
+                  paging = FALSE,
+                  searching = FALSE,
+                  fixedColumns = TRUE,
+                  autoWidth = TRUE,
+                  ordering = TRUE,
+                  info = FALSE,
+                  dom = 'tB',
+                  buttons = c('copy', 'csv')),
+                height = "100%",
+                width = "500px"
+                )))
+    
+  } # if "safe_chill_tbl" %in% params$rpt_opts
+
+  ################ CHILL ACCUMULATION BY MONTH LINE PLOTS ##########################
+  if ("chill_month_plot" %in% params$rpt_opts) {
+
+    print(h2("Chill Portions Accumulated by Month"))
+  
+    print(p("The plots below show the accumulation of chill portions during the 
+                       growing season for each time period and emissions scenario. The horizontal 
+                       black line indicates ", 
+                       strong(params$model_settings_lst$req_chill, " chill portions "), "."))
+    
+    if (!is.na(params$site_info_lst[[i]]$gg_chillts$gg_chillts_base)) {
+      print(HTML("<div class='gg-plot'>"))
+      print(params$site_info_lst[[i]]$gg_chillts$gg_chillts_base)
+      print(HTML("</div>"))
+    }
+  
+    if (!is.na(params$site_info_lst[[i]]$gg_chillts$gg_chillts_rcp45)) {
+      print(HTML("<div class='gg-plot'>"))
+      print(params$site_info_lst[[i]]$gg_chillts$gg_chillts_rcp45)
+      print(HTML("</div>"))
+    }
+  
+    if (!is.na(params$site_info_lst[[i]]$gg_chillts$gg_chillts_rcp85)) {
+      print(HTML("<div class='gg-plot'>"))
+      print(params$site_info_lst[[i]]$gg_chillts$gg_chillts_rcp85)
+      print(HTML("</div>"))
+    }
+
+  }  # if "chill_month_plot" %in% params$rpt_opts
+
+  ################ REQUIRED CHILL TABLE ##########################
+  if ("req_chill_tbl" %in% params$rpt_opts) {
+    print(h2("Likelihood of Getting the Required Chill"))
+  
+    print(p("The table below shows the probability of getting at least ", 
+               strong(params$model_settings_lst$req_chill, " chill portions "), 
+               "by the end of the growing season for each time period and emissions scenario."))
+    
+    print(tagList(DT::datatable(params$site_info_lst[[i]]$comb_req_chill_pct_tbl,
+              rownames= FALSE,
+              extensions = 'Buttons',
+              options = list(
+                paging = FALSE,
+                searching = FALSE,
+                fixedColumns = TRUE,
+                autoWidth = TRUE,
+                ordering = TRUE,
+                info = FALSE,
+                dom = 'tB',
+                buttons = c('copy', 'csv')),
+              height = "100%",
+              width = "500px"
+              ) %>% 
+                DT::formatStyle(columns = 1:2, `text-align` = 'center') %>% 
+                DT::formatPercentage(columns = 3)
+          ))
+    
+  }
+
+  print(br())
+
+} ## for (i in 1:length(params$site_info_lst)) {
+```
+
+
+```{r comparison_tbl, echo = FALSE, results = 'asis', eval = TRUE}
+
+if ("comp_table" %in% params$rpt_opts) {
+  
+  print(h1("Site Comparison Summary"))
+  
+  ## Compile the Summary Table
+  allsites_sum_tbl <- NULL
+  
+  for (i in 1:length(params$site_info_lst)) {
+
+    safechill_onerow_tbl <- site_info_lst[[i]]$safe_chill_tbl %>%
+      mutate(period_scenario = paste0("sc~", time_period, "~", scenario),
+             safe_chill = round(safe_chill, 1)) %>%
+      select(period_scenario, safe_chill) %>%
+      tidyr::pivot_wider(names_from = period_scenario, values_from = safe_chill)
+  
+    reqchill_onerow_tbl <- site_info_lst[[i]]$comb_req_chill_pct_tbl %>%
+      mutate(period_scenario = paste0("rc~", time_period, "~", scenario),
+             percent_reached_thresh = paste0(round(percent_reached_thresh * 100), "%") ) %>%
+      select(period_scenario, percent_reached_thresh) %>%
+      tidyr::pivot_wider(names_from = period_scenario, values_from = percent_reached_thresh)
+  
+    allsites_sum_tbl <- allsites_sum_tbl %>%
+      bind_rows(data.frame(site = site_info_lst[[i]]$site_name, 
+                   safechill_onerow_tbl, 
+                   reqchill_onerow_tbl,
+                   check.names = FALSE))  ## checking names converts '~' into '.' -- no like
+
+  }
+
+  # print(p(paste(names(allsites_sum_tbl), collapse = ", ")))
+  
+  new_col_names <- names(allsites_sum_tbl) %>% 
+    replace(1, "Site") %>% 
+    gsub("^sc~", "", .) %>% 
+    gsub("^rc", "", .) %>% 
+    gsub("~", "<br/>", .)
+  
+  # print(p(paste(new_col_names, collapse = ", ")))
+    
+  knitr::kable(allsites_sum_tbl, 
+               format = "html",
+               escape = FALSE,
+               col.names = new_col_names,
+               align = c("l", rep("c", ncol(allsites_sum_tbl) - 1))) %>%
+    kableExtra::add_header_above(c(" ", 
+                                   "Safe Chill" = ncol(safechill_onerow_tbl),
+                                   "Likelihood Req. Chill Reached" = ncol(reqchill_onerow_tbl))) %>% 
+    kableExtra::kable_styling()
+  
+}
+
+```
+
+
