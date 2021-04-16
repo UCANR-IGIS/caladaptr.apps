@@ -9,8 +9,8 @@
 # Installation
 
 ``` r
-## Install caladaptr (dependent package, not on CRAN)
-remotes::install_github("ucanr-igis/caladaptr.apps")
+## Install caladaptr (which is a dependent package, not on CRAN)
+remotes::install_github("ucanr-igis/caladaptr")
 
 ## Install caladaptr.apps and all dependent packages
 remotes::install_github("ucanr-igis/caladaptr.apps")
