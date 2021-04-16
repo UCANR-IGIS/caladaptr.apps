@@ -4,13 +4,12 @@ Title: Demo Shiny apps for caladaptr
 Version: 0.1.0
 Authors@R: person("Andy", "Lyons", email = "caladaptr@gmail.com", role = c("aut", "cre"))
 Maintainer: Andy Lyons <caladaptr@gmail.com>
-Description: Demo Shiny apps for caladaptr
+Description: caladaptr.apps provides demo Shiny apps that use caladaptr.
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.1
 Imports: 
-    DT,
     caladaptr,
     conflicted,
     dplyr,
@@ -28,9 +27,11 @@ Imports:
     stringr,
     tibble,
     tidyr,
-    units
+    units,
+    DT
 Suggests: 
     chillR
 Depends: 
     R (>= 3.6)
 VignetteBuilder: knitr
+

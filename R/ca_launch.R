@@ -10,7 +10,6 @@
 #' @import caladaptr
 #' @import conflicted
 #' @import dplyr
-#' @import DT
 #' @import ggplot2
 #' @import htmltools
 #' @import leaflet
@@ -23,8 +22,11 @@
 #' @import tibble
 #' @import tidyr
 #' @import units
-
 #' @export
+
+## Taken out because it caused warnings: 
+## @import DT 
+## @importFrom DT dataTableOutput renderDataTable datatable
 
 ca_launch <- function(app = c("timeseries", "chill", "chill2")[1], 
                       display.mode = c("normal", "showcase")[1]) {

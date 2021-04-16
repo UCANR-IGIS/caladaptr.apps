@@ -1,13 +1,13 @@
-## cat("\nTotal memory used at start is: ", round(as.numeric(pryr::mem_used()) / 1000000), "MB\n")
-
 ## Attach packages
 library(shiny)
+
 
 library(caladaptr)
 library(ggplot2)
 library(shinyhelper)
 library(leaflet)      ## used a lot in app.R
 library(dplyr)
+
 
 ## The following is an attempt to 'trick' the Shiny app publisher to 
 ## make sure the following packages are installed on the server
@@ -38,6 +38,8 @@ requireNamespace("stringr")      ## use 2 functions in app.R (str_wrap and str_s
 requireNamespace("rmarkdown")    ## used to launch report.Rmd
 requireNamespace("kableExtra")   ## used in report.Rmd
 requireNamespace("tidyr")        ## pivot_* functions used here and report.Rmd
+#requireNamespace("shinyjs")
+
 
 
 ## requireNamespace("scales")   No longer needed - I format columns as percent using DT
@@ -61,6 +63,7 @@ requireNamespace("tidyr")        ## pivot_* functions used here and report.Rmd
 conflicted::conflict_prefer("filter", "dplyr", quiet = TRUE)
 conflicted::conflict_prefer("count", "dplyr", quiet = TRUE)
 conflicted::conflict_prefer("select", "dplyr", quiet = TRUE)
+conflicted::conflict_prefer("show", "shinyjs", quiet = TRUE)
 
 ## Utility function to add an additional class to the outer-most div of a shiny-tag
 shinytag_add_class <- function(x, additional_class) {
@@ -76,6 +79,12 @@ shinytag_wrapchild2div <- function(x, style) {
   x$children[[2]] <- div(x$children[[2]], style = style)
   x
 }
+
+# # define js function for opening urls in new tab/window
+# library(shinyjs)
+# js_code <- "shinyjs.browseMyURL = function(url) {
+#  window.open(url,'_blank');
+# }"
 
 ## Utility function to print memory usage to the console
 # requireNamespace("pryr")
@@ -97,6 +106,11 @@ ui <- function(request) {
 
   fluidPage(
     if (file.exists("gtag_chill.js")) tags$head(includeHTML("gtag_chill.js")),
+    
+    # set up shiny js to be able to call our browseURL function
+    # shinyjs::useShinyjs(),
+    # shinyjs::extendShinyjs(text = js_code, functions = 'browseMyURL'),
+    
     tags$head(tags$style(type="text/css", 
         "p.step {color:black; font-weight:bold; font-size:120%; padding-top:5px;}
         p.topborder {border-top:3px solid lightgray;}
@@ -118,7 +132,7 @@ ui <- function(request) {
                ".shinyhelper-container {display: inline-block; position: relative; margin-left: 1em;}
                div.dt-buttons {margin-top:5px; float:right;}"),
     
-    titlePanel(title = "Projected Chill Portions Under Climate Change Calculator",
+    titlePanel(title = "Projected Chill Portions Under Climate Change Calculator 2.0",
       windowTitle = "Chill Portions Calculator"),
   
     fluidRow(
@@ -151,7 +165,8 @@ ui <- function(request) {
                   
                   <li>This calculator uses chill <i>portions</i> rather than chill <i>hours</i>, because chill portions do a better job at predicting tree phenology. <a href='http://fruitsandnuts.ucdavis.edu/Weather_Services/chilling_accumulation_models/about_chilling_units/' target='_blank' rel='noopener'>More info</a>.</li>
                   
-                  <li>RStudio users can run this and other demo Shiny apps directly from RStudio using the `caladaptr.apps` package.</li> 
+                  <li>RStudio users can run this and other demo Shiny apps directly from RStudio 
+                  using the <a href=\"https://github.com/ucanr-igis/caladaptr.apps\" target=\"_blank\" rel=\"noopener\">caladaptr.apps</a> package.</li> 
                   
                   <li>To compute projected chill portions using a script, see this <a href='https://ucanr-igis.github.io/caladaptr-res/notebooks/chill.nb.html' target='_blank' rel='noopener'>
                   R Notebook</a>.</li>
@@ -173,7 +188,7 @@ ui <- function(request) {
       column(8,
              tabsetPanel(
                tabPanel("From Map", 
-                        tags$p("Select a location on the map, give it a name, and click 'Add to map'. Repeat as needed.") %>% 
+                        tags$p("Select a location on the map, give it a name, and click 'Add to location list'. Repeat as needed.") %>% 
                           shinytag_add_class("space_above_below"),
                         div(leafletOutput("mymap"),
                             style = "max-width:600px; margin-bottom:1em;"),
@@ -333,6 +348,7 @@ ui <- function(request) {
                       shinytag_add_class("space_above_below"),
                     
                     tags$p("Once the report opens, you can print or save it as a HTML file.", class="desc"),
+                    ## tags$p(tags$a("OPEN REPORT", href="report.html")),
                     htmlOutput("htmlout_fetch_msg") %>% shinytag_add_class("error-msg"),
                     textOutput("txt_status"),
                     tags$p())
@@ -520,7 +536,7 @@ server <- function(input, output, session) {
   
   ## The following will run whenever cmd_sample_data link is clicked
   observeEvent(input$cmd_sample_data, {
-    locs_tbl(read.csv('farms2.csv', header = TRUE))
+    locs_tbl(read.csv('farms.csv', header = TRUE))
   })
 
   ## Update the outtbl_locations whenever locs_tbl() is updated
@@ -993,9 +1009,7 @@ server <- function(input, output, session) {
       progress_rpt$close()
       # progress_lst[[1]]$close()
       # progress_lst[[2]]$close()
-      
-      
-      
+
       # cat("length of progress_lst:", length(progress_lst), "\n")
       # print("going to close element 1")
       # progress_lst[[1]]$close()   ## leaves behind B
@@ -1005,6 +1019,8 @@ server <- function(input, output, session) {
       
       ## Open the report
       browseURL(output_fn)
+      
+      ## js$browseMyURL(output_fn)
 
     }  ## if not is.null(pt_coords() 
 
