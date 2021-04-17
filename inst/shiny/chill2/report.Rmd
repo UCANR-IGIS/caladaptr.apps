@@ -22,7 +22,7 @@ conflicted::conflict_prefer("filter", "dplyr", quiet = TRUE)
 conflicted::conflict_prefer("count", "dplyr", quiet = TRUE)
 conflicted::conflict_prefer("select", "dplyr", quiet = TRUE)
 
-# NOT SURE IF THESE ARE NEEDED HERE (THEY'RE ALSO IN APP.R)
+# NOT SURE IF THESE ARE NEEDED HERE (THEY'RE ALSO IN APP.R, and this Rmd will only be rendered from app.R)
 # requireNamespace("conflicted")
 # requireNamespace(leaflet)
 # requireNamespace(tidyr)
@@ -85,7 +85,7 @@ if ("loc_map" %in% params$rpt_opts) {
 
 ## Climate Data
 
-```{r echo = FALSE, results = 'asis', eval = TRUE}
+```{r climate_data, echo = FALSE, results = 'asis', eval = TRUE}
 tbl_vec <- c("Baseline", 
              paste(params$model_settings_lst$base_year, collapse = " - "),
              paste(params$model_settings_lst$base_scenario, collapse = ", "),
@@ -99,6 +99,18 @@ tbl_mat <- matrix(tbl_vec, byrow=TRUE, ncol=4,
                   dimnames=list(1:(length(tbl_vec)/4), c("Period", "Years", "Emissions Scenario(s)", "GCMs")))
 
 knitr::kable(tbl_mat, format = "html") %>% kableExtra::kable_styling()
+```
+
+## Chill Analysis Settings
+
+```{r chill_setings, echo = FALSE, results = 'asis', eval = TRUE}
+tbl_vec <- c(params$model_settings_lst$chill_month,
+             paste0(params$model_settings_lst$safe_chill, "%"),
+             params$model_settings_lst$req_chill)
+tbl_mat <- matrix(tbl_vec, byrow=TRUE, ncol=3, 
+                  dimnames=list(1:(length(tbl_vec)/3), c("Start Counting Chill From", "Safe Chill Level", "Required Chill Portions")))
+
+knitr::kable(tbl_mat, format = "html", align = rep("c", 3)) %>% kableExtra::kable_styling()
 ```
 
 ```{r bookmark_show, echo=FALSE, results = 'asis'}
@@ -285,7 +297,11 @@ if ("comp_table" %in% params$rpt_opts) {
     gsub("~", "<br/>", .)
   
   # print(p(paste(new_col_names, collapse = ", ")))
-    
+  
+  col_safe <- "#DDEBF5"
+  col_req <- "#DFF9DF"
+  allsites_sum_tbl <<- allsites_sum_tbl
+  
   knitr::kable(allsites_sum_tbl, 
                format = "html",
                escape = FALSE,
@@ -293,9 +309,11 @@ if ("comp_table" %in% params$rpt_opts) {
                align = c("l", rep("c", ncol(allsites_sum_tbl) - 1))) %>%
     kableExtra::add_header_above(c(" ", 
                                    "Safe Chill" = ncol(safechill_onerow_tbl),
-                                   "Likelihood Req. Chill Reached" = ncol(reqchill_onerow_tbl))) %>% 
+                                   "Likelihood Req. Chill Reached" = ncol(reqchill_onerow_tbl)),
+                                 background = c("white", col_safe, col_req)) %>% 
+    kableExtra::column_spec(2:4, background = col_safe) %>% 
+    kableExtra::column_spec(5:7, background = col_req) %>% 
     kableExtra::kable_styling()
-  
 }
 
 ```

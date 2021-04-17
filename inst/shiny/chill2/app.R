@@ -1,13 +1,11 @@
 ## Attach packages
 library(shiny)
-
-
 library(caladaptr)
 library(ggplot2)
 library(shinyhelper)
 library(leaflet)      ## used a lot in app.R
 library(dplyr)
-
+library(shinyjs)      ## must use library; requirenamespace won't cut it
 
 ## The following is an attempt to 'trick' the Shiny app publisher to 
 ## make sure the following packages are installed on the server
@@ -38,11 +36,8 @@ requireNamespace("stringr")      ## use 2 functions in app.R (str_wrap and str_s
 requireNamespace("rmarkdown")    ## used to launch report.Rmd
 requireNamespace("kableExtra")   ## used in report.Rmd
 requireNamespace("tidyr")        ## pivot_* functions used here and report.Rmd
-#requireNamespace("shinyjs")
 
-
-
-## requireNamespace("scales")   No longer needed - I format columns as percent using DT
+## requireNamespace("scales")   No longer needed - I format columns as percent using DT or manually with paste0()
 ## requireNamespace("chillR")   chillR is problematic to install on ShinyApps.io 
 ##                              Specifically, the dependent package RMAWGEN has 3 dependencies that
 ##                              aren't picked up by rsconnect.
@@ -80,10 +75,9 @@ shinytag_wrapchild2div <- function(x, style) {
   x
 }
 
-# # define js function for opening urls in new tab/window
-# library(shinyjs)
-# js_code <- "shinyjs.browseMyURL = function(url) {
-#  window.open(url,'_blank');
+# define js function for opening urls in new tab/window
+# js_code <- "shinyjs.browseMe = function(url) {
+#   window.open(url,'_blank');
 # }"
 
 ## Utility function to print memory usage to the console
@@ -107,10 +101,10 @@ ui <- function(request) {
   fluidPage(
     if (file.exists("gtag_chill.js")) tags$head(includeHTML("gtag_chill.js")),
     
-    # set up shiny js to be able to call our browseURL function
-    # shinyjs::useShinyjs(),
-    # shinyjs::extendShinyjs(text = js_code, functions = 'browseMyURL'),
-    
+    # set up shiny js to be able to call our browseMe function
+    useShinyjs(),
+    #extendShinyjs(text = js_code, functions = 'browseMe'),
+
     tags$head(tags$style(type="text/css", 
         "p.step {color:black; font-weight:bold; font-size:120%; padding-top:5px;}
         p.topborder {border-top:3px solid lightgray;}
@@ -121,6 +115,7 @@ ui <- function(request) {
         .leaflet-container {cursor: pointer !important;}
         .iblock {display: inline-block;}   /* inline block for side-by-side UI elements  */
         div.error-msg {color:red; margin:1em 0;}
+        div.happy-msg {color:green; margin:1em 0;}
         .space_above_below {margin-top:0.5em; margin-bottom:0.5em;}
         .indented2 {margin-left:2em;}")
     ),
@@ -214,7 +209,7 @@ ui <- function(request) {
                           shinytag_add_class("space_above_below"),
                         actionButton("cmd_addloc_coords", "Add to location list") %>% 
                           shinytag_add_class("space_above_below"),
-                        htmlOutput("htmlout_addcoords2lst_msg") %>% 
+                        htmlOutput("htmlout_coords_not_dd_msg") %>% 
                           shinytag_add_class("error-msg")
                         ),
                
@@ -243,6 +238,8 @@ ui <- function(request) {
     fluidRow(
       column(4, 
              DT::dataTableOutput("outtbl_locations"),
+             tags$p(actionLink("cmd_clear_locs", "Clear all"),
+                    style="text-align:right;"),
              tags$p()
              ),
       column(8)
@@ -337,7 +334,7 @@ ui <- function(request) {
                                                      "Safe Chill Table" = "safe_chill_tbl",
                                                      "Chill Portions by Month" = "chill_month_plot",
                                                      "Likelihood of Getting Required Chill" = "req_chill_tbl",
-                                                     "Comparison table" = "comp_table"),
+                                                     "Site comparison table" = "comp_table"),
                                          selected = c("loc_map", "chill_dist_hist", "safe_chill_tbl", 
                                                       "chill_month_plot", "req_chill_tbl", "comp_table")),
                       style = "margin-left:2em;"
@@ -347,9 +344,10 @@ ui <- function(request) {
                     actionButton("cmd_fetch2", "Fetch Data and Generate Report") %>% 
                       shinytag_add_class("space_above_below"),
                     
-                    tags$p("Once the report opens, you can print or save it as a HTML file.", class="desc"),
-                    ## tags$p(tags$a("OPEN REPORT", href="report.html")),
-                    htmlOutput("htmlout_fetch_msg") %>% shinytag_add_class("error-msg"),
+                    textOutput("txtout_loc_lst_empty") %>% shinytag_add_class("error-msg"),
+                    
+                    textOutput("txtout_rpt_coming") %>% shinytag_add_class("happy-msg"),
+                    htmlOutput("htmlout_rpt_link"),
                     textOutput("txt_status"),
                     tags$p())
     ),
@@ -372,17 +370,15 @@ server <- function(input, output, session) {
     bookmark_url(url)
   })
   
-  ## We don't want to record the state of cmd_fetch2 (which if it was clicked would automatically
-  ## fetch data immediately)
+  ## We don't want to record the state of command buttons (which if they were clicked would automatically
+  ## run the observeEvent code on restore)
   setBookmarkExclude(c("cmd_fetch2", "cmd_addloc_map", "cmd_addloc_coords"))
   
-  # Include the value of bookmark_url() whenever bookmarking occurs
+  # Manually add a pipe-delimited copy of the locs_tbl() data frame to the bookmark state, so it can be
+  # transmitted via the bookmark URL
   onBookmark(function(state) {
-    #state$values$locations_tbl <- locs_tbl()
-    
     state$values$locations_csv <- paste(apply(locs_tbl(), 1, paste, collapse="|"), 
                                         collapse = "|")
-    
   })
   
   # Read values from state$values when we restore
@@ -396,12 +392,23 @@ server <- function(input, output, session) {
     
     locs_tbl(rebuilt_df)
   })
+
+  ## Add an observer to watch out for clicks on the shinyhelper buttons.
+  ## The md files will be located in the default 'helpfiles' subdir
+  observe_helpers()
   
-  # Automatically bookmark every time an input changes
-  # observe({
-  #   reactiveValuesToList(input)
-  #   session$doBookmark()
+  ## Create a reactiveVal object for all the locations (to be filled with a data frame)
+  locs_tbl <- reactiveVal()
+  
+  # ## Create a (hidden) reactive output that is the condition expression for a conditional panel
+  # rpt_coming_show  <- reactiveVal(FALSE)
+  # output$rpt_coming_vis <- reactive({
+  #   rpt_coming_show()  
   # })
+  # outputOptions(output, "rpt_coming_vis", suspendWhenHidden=FALSE)
+  
+  ## THIS DOESN'T WORK, I THINK BECAUSE IT DOESN'T HAVE AN OBSERVER
+  ## outputOptions(output, "txtout_rpt_coming", priority = 10)  
 
   ## Set the initial map extent (called once but never called again after that)
   output$mymap <- renderLeaflet({
@@ -409,29 +416,6 @@ server <- function(input, output, session) {
       addTiles() %>% 
       setView(-120.2, 36.4, zoom=6)
   })
-  
-  ## Create a reactiveVal object for all the locations
-  locs_tbl <- reactiveVal()
-
-  ## Create a reactiveVal object which is where we'll store  the coordinates 
-  ## when someone clicks the map *or* enters coordinates into the text box
-  ## pt_coords <- reactiveVal()    
-
-  
-  ## Create reactiveVal objects to store the API requests.
-  ## The data fetching reactiveVal objects will update when these
-  ## API requests are modified
-  # pt_prj_cap <- reactiveVal()
-  # pt_base_cap <- reactiveVal()
-
-  ## Create reactiveVal objects for the number of points clicked on the map
-  ## (Used to generate a default location name that is different than
-  ## earlier ones)
-  ## pt_num <- reactiveVal(0)
-  
-  ## Add an observer to watch out for clicks on the shinyhelper buttons.
-  ## The md files will be located in the default 'helpfiles' subdir
-  observe_helpers()
 
   ## The following will run whenever input$mymap_click changes
   observeEvent(input$mymap_click, {
@@ -474,9 +458,6 @@ server <- function(input, output, session) {
       
     }
 
-    ## Clear error messages 
-    output$htmlout_fetch_msg <- renderUI(NULL)
-    
   })
   
   ## The following will run whenever cmd_addloc_coords is clicked
@@ -488,12 +469,12 @@ server <- function(input, output, session) {
       as.numeric()
     
     if (NA %in% mycoords) {
-      output$htmlout_addcoords2lst_msg <- renderUI(HTML("Error: Please enter coordinates in decmial degrees separated by a comma.<br/>Example:  -120.226, 36.450"))
+      output$htmlout_coords_not_dd_msg <- renderUI(HTML("Error: Please enter coordinates in decmial degrees separated by a comma.<br/>Example:  -120.226, 36.450"))
     
     } else {
       
       ## Clear error messages 
-      output$htmlout_addcoords2lst_msg <- renderUI(NULL)
+      output$htmlout_coords_not_dd_msg <- renderUI(NULL)
       
       ## TODO: Check if these coordinates are new
       
@@ -512,6 +493,7 @@ server <- function(input, output, session) {
                    bind_rows(tibble(site = this_site,
                                     lon = mycoords[1],
                                     lat = mycoords[2])))
+
       }
 
     }
@@ -528,22 +510,41 @@ server <- function(input, output, session) {
     # column will contain the local filenames where the data can
     # be found.
     
-    # req(input$infile_csv) not needed, this is an observeEvent
-    
+    ## Update the locs_tbl() reactiveVal object
     locs_tbl(read.csv(input$infile_csv$datapath, header = TRUE))
-    
+
   })
   
   ## The following will run whenever cmd_sample_data link is clicked
   observeEvent(input$cmd_sample_data, {
     locs_tbl(read.csv('farms.csv', header = TRUE))
   })
+  
+  ## The following will run whenever cmd_sample_data link is clicked
+  observeEvent(input$cmd_clear_locs, {
+    locs_tbl(NULL)
+  })
+  
+  ## If location changes or cmd_clear_locs is clicked, delete any messages
+  ## below the 'fetch' button
+  observeEvent({
+    locs_tbl() 
+    input$cmd_clear_locs
+    1
+    }, {
+    
+    output$txtout_loc_lst_empty <- renderText(NULL)
+
+    ## txtout_rpt_coming and htmlout_rpt_link are managed with shinyjs,
+    ## because the render functions don't flush in time
+    shinyjs::html(id = "txtout_rpt_coming", html = "")
+    shinyjs::html(id = "htmlout_rpt_link", html = "")
+    
+  })
 
   ## Update the outtbl_locations whenever locs_tbl() is updated
   output$outtbl_locations <- DT::renderDataTable({
-    
     req(locs_tbl())
-
     DT::datatable(locs_tbl(),
                   rownames= FALSE, 
                   extensions = 'Buttons',
@@ -587,17 +588,33 @@ server <- function(input, output, session) {
     
     ## Check if a location has been selected
     if (is.null(locs_tbl())) {
-      output$htmlout_fetch_msg <- renderUI(p("Location list empty!"))
+      output$txtout_loc_lst_empty <- renderText("Location list empty!")
+      
+      ## output$txtout_rpt_coming <- renderText(NULL)
+      ## output$htmlout_rpt_link <- renderUI(NULL)
+      
+      shinyjs::html(id = "txtout_rpt_coming", html = "")
+      shinyjs::html(id = "htmlout_rpt_link", html = "")
       
       NULL
 
     } else {
-      ## Erase any message that might be in htmlout_fetch_msg
-      output$htmlout_fetch_msg <- renderUI(NULL)
+      ## Erase any message that might be in txtout_loc_lst_empty
+      output$txtout_loc_lst_empty <- renderText(NULL)
       
+      # output$txtout_rpt_coming <- renderText(
+      #   "Please wait. When the report is generated, the link will appear below. To keep a copy, be sure to save the HTML file to your computer, or print it."
+      # ) 
+      
+      ## Use shinyjs instead of renderXX() in order for the output to be refreshed immediately
+      shinyjs::html(id = "txtout_rpt_coming", 
+                    html = "Please wait, the report is being generated. When finished, the link will appear below.<br/>To keep a copy, be sure to save the HTML file to your computer, or print it.")
+      
+      shinyjs::html(id = "htmlout_rpt_link", html = "")
+
       ## Record the report options as a character vector
       rpt_opts <- isolate(input$in_chkgrp_rptopts)
-      
+
       ## Trigger a bookmark update. 
       ## In turn this will trigger the onBookmarked function which saves the
       ## current bookmark URL into the bookmark_url() reactiveVal (which we pass to report.Rmd)
@@ -606,7 +623,7 @@ server <- function(input, output, session) {
       ## Prepare some lists to hold objects created in the loop
       site_info_lst <- list()
       progress_lst <- list()
-      
+            
       for (i in 1:nrow(locs_tbl())) {
         
         site_name <- locs_tbl()[i, 1, drop = TRUE]
@@ -622,22 +639,23 @@ server <- function(input, output, session) {
           ca_dates(start = paste(input$prj_year[1] - 1, which(input$chill_month == month.abb), "01", sep = "-"), 
                    end = paste(input$prj_year[2], which(input$chill_month == month.abb) - 1, "30", sep = "-"))
         
-        ## Fetch Projected data
+        ###########################################
+        ## FETCH AND PROCESS PROJECTED DATA
+        ###########################################
         
         ## Create a progress object that we can pass to ca_getvals_tbl()
         ## Make sure it closes when we exit even if there's an error
-        
         progress_lst[[i]] <- Progress$new()
         on.exit(progress_lst[[i]]$close())
         
         progress_lst[[i]]$set(value = 0, message = paste0(site_name, ". Fetching projected data: "), 
-                     detail = "Daily min and max temp")
+                    detail = "Daily min and max temp")
         
         ## Get values
         pt_prj_dtemp_tbl2 <- ca_getvals_tbl(cur_prj_cap2, 
-                                            quiet = TRUE, 
-                                            shiny_progress = progress_lst[[i]]) 
-        
+                                           quiet = TRUE, 
+                                           shiny_progress = progress_lst[[i]]) 
+
         ## Add Year, Month and Day, temp_c, growing season; pivot tasmin
         progress_lst[[i]]$set(message = paste0(site_name, ". Processing:"), 
                      detail = "Formatting projected data columns")
@@ -686,9 +704,9 @@ server <- function(input, output, session) {
           summarise(max_chill = max(accum_chill_prtn), .groups = 'drop') %>% 
           mutate(time_period = paste0(isolate(input$prj_year[1]), "-", isolate(input$prj_year[2])))
         
-        #####################################################################
-        ## Create an API request object for BASELINE climate
-        #####################################################################
+        ###########################################
+        ## FETCH AND PROCESS HISTORICAL DATA
+        ###########################################
         
         cur_base_cap2 <- ca_loc_pt(coords = c(x_coord, y_coord)) %>% 
           ca_gcm(input$base_gcm) %>% 
@@ -958,10 +976,12 @@ server <- function(input, output, session) {
         }
 
         #####################################################
-        ## DONE CREATING THE OUTPUTS FOR THIS SITE
+        ## DONE CREATING THE OUTPUTS FOR THIS LOCATION
         #####################################################
         
         progress_lst[[i]]$set(message = paste0(site_name, "."), detail = "Done")
+        
+        ## progress_lst[[i]]$close()
         
         site_info_lst[[i]] <- list(site_name = site_name,
                                    site_coords = c(x_coord, y_coord),
@@ -983,13 +1003,10 @@ server <- function(input, output, session) {
       ## Generate the report
       ##########################################
 
-      ## Edit the URL setting the value of cmd_fetch2 to null (so results don't get fetched immediately)
-      ## NO LONGER NEEDED, SETBOOKMARKEXCLUDE() DOES THE JOB
-      ## bookmark_settings_url <- bookmark_url() %>% gsub("&cmd_fetch2=[0-9]+", "&cmd_fetch2=null", .)
-        
       output_fn <- "report.html"
       index_html <- rmarkdown::render("report.Rmd",
                                       output_file = output_fn,
+                                      output_dir = "www",
                                       params = list(bookmark_url = bookmark_url(),
                                                     rpt_opts = rpt_opts,
                                                     site_info_lst = site_info_lst,
@@ -1006,25 +1023,30 @@ server <- function(input, output, session) {
                                                     )
                                       )
 
-      progress_rpt$close()
-      # progress_lst[[1]]$close()
-      # progress_lst[[2]]$close()
+      ## Close progress objects
+      suppressWarnings({
+        progress_rpt$close()
+        for (i in 1:length(progress_lst)) {
+          progress_lst[[i]]$close()
+        }
+      })
+      
+      ## Remove the content from txtout_rpt_coming
+      ## output$txtout_rpt_coming <- renderText(NULL)  ## doesn't always work
+      
+      ## shinyjs::html(id = "txtout_rpt_coming", html = "")
 
-      # cat("length of progress_lst:", length(progress_lst), "\n")
-      # print("going to close element 1")
-      # progress_lst[[1]]$close()   ## leaves behind B
-      # cat("length of progress_lst:", length(progress_lst), "\n")
-      # progress_lst[[2]]$close()   ## leaves behind B
-      # cat("length of progress_lst:", length(progress_lst), "\n")
+      shinyjs::html(id = "htmlout_rpt_link", 
+                    html = "<p><a href=\"report.html\" target=\"_blank\" class=\"btn btn-default\" style=\"background-color:#e5f5ca; color:green; font-weight:bold; margin-left:2em;\" rel=\"noopener\">Open Report</a></p>")
       
       ## Open the report
-      browseURL(output_fn)
-      
-      ## js$browseMyURL(output_fn)
+      ## browseURL(output_fn)    ## doesn't work on shinyapps.io
+      ## js$browseMe(output_fn)  ## creates a pop-up windows :-(
 
-    }  ## if not is.null(pt_coords() 
+    }  ## if not is.null locs_tbl() 
 
   })
+  
 
 }
 

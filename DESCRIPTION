@@ -1,7 +1,7 @@
 Package: caladaptr.apps
 Type: Package
 Title: Demo Shiny apps for caladaptr
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: person("Andy", "Lyons", email = "caladaptr@gmail.com", role = c("aut", "cre"))
 Maintainer: Andy Lyons <caladaptr@gmail.com>
 Description: caladaptr.apps provides demo Shiny apps that use caladaptr.

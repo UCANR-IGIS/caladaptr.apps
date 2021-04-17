@@ -30,4 +30,7 @@ ca_launch("timeseries")
 
 ## Launch the projected chill portions app
 ca_launch("chill")
+
+## Version 2 of the chill app supports multiple locations
+ca_launch("chill2")
 ```
