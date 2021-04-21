@@ -94,12 +94,17 @@ source('ca_make_hourly_temps.R')
 source('chillr_daylength.R')
 source('chillr_dynamic_model.R')
 
+gtag_fn <- "gtag_chill2.js"
+
 ## report_memory("Memory usages after packages are loaded")
 
 ui <- function(request) {
 
   fluidPage(
-    if (file.exists("gtag_chill.js")) tags$head(includeHTML("gtag_chill.js")),
+    ## Only load the Google Analytics tracking tag if the app is running on ShinyApps.io
+    if (file.exists(gtag_fn) && Sys.getenv('SHINY_PORT') != "") {
+      tags$head(includeHTML(gtag_fn))
+    },
     
     # set up shiny js to be able to call our browseMe function
     useShinyjs(),
@@ -116,6 +121,7 @@ ui <- function(request) {
         .iblock {display: inline-block;}   /* inline block for side-by-side UI elements  */
         div.error-msg {color:red; margin:1em 0;}
         div.happy-msg {color:green; margin:1em 0;}
+        div#shiny-notification-panel {right:0; left:0; margin:0 auto;}
         .space_above_below {margin-top:0.5em; margin-bottom:0.5em;}
         .indented2 {margin-left:2em;}")
     ),
@@ -154,8 +160,8 @@ ui <- function(request) {
                   <summary style='color:#337ab7; cursor:pointer; outline:none;'>Click here for more info.</summary>
                   <ul>
                   
-                  <li>This is a pilot app for demonstration purposes only.</li>
-                  
+                  <li>This is a pilot app for demonstration purposes only. A <a href='https://youtu.be/5TYs3dbUU7A' rel='noopener' target='_blank'>YouTube demo</a> is available.</li>
+
                   <li>This calculator uses downscaled climate data from Cal-Adapt, which is available for California, Nevada, and a <a href='https://ucanr-igis.github.io/caladaptr-res/workshops/caladaptr_intro_dec20/slides_files/figure-slidy/unnamed-chunk-6-1.png' target='_blank'>little bit of neighboring states</a> in the western USA.</li>
                   
                   <li>This calculator uses chill <i>portions</i> rather than chill <i>hours</i>, because chill portions do a better job at predicting tree phenology. <a href='http://fruitsandnuts.ucdavis.edu/Weather_Services/chilling_accumulation_models/about_chilling_units/' target='_blank' rel='noopener'>More info</a>.</li>
@@ -271,7 +277,7 @@ ui <- function(request) {
       column(12,
              tags$br(),
              tags$p("4. Select the climate data to use for the ", tags$u("projected future"), class = "step topborder"),
-             sliderInput("prj_year", "Year range:", min = 2006, max = 2099, value = c(2040, 2060), sep = "", step = 1) %>% 
+             sliderInput("prj_year", "Year range:", min = 2006, max = 2099, value = c(2035, 2065), sep = "", step = 1) %>% 
                shinytag_add_class("iblock") %>% 
                helper(type = "markdown",
                       icon = "info-circle",

@@ -1,7 +1,8 @@
 Package: caladaptr.apps
 Type: Package
 Title: Demo Shiny apps for caladaptr
-Version: 0.1.1
+Version: 0.1.3
+Date: 2021-04-20
 Authors@R: person("Andy", "Lyons", email = "caladaptr@gmail.com", role = c("aut", "cre"))
 Maintainer: Andy Lyons <caladaptr@gmail.com>
 Description: caladaptr.apps provides demo Shiny apps that use caladaptr.
@@ -34,4 +35,3 @@ Suggests:
 Depends: 
     R (>= 3.6)
 VignetteBuilder: knitr
-

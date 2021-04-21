@@ -275,8 +275,10 @@ if ("comp_table" %in% params$rpt_opts) {
       tidyr::pivot_wider(names_from = period_scenario, values_from = safe_chill)
   
     reqchill_onerow_tbl <- site_info_lst[[i]]$comb_req_chill_pct_tbl %>%
+      # mutate(period_scenario = paste0("rc~", time_period, "~", scenario),
+      #        percent_reached_thresh = paste0(round(percent_reached_thresh * 100), "%") ) %>%
       mutate(period_scenario = paste0("rc~", time_period, "~", scenario),
-             percent_reached_thresh = paste0(round(percent_reached_thresh * 100), "%") ) %>%
+             percent_reached_thresh = round(percent_reached_thresh, 2)) %>%
       select(period_scenario, percent_reached_thresh) %>%
       tidyr::pivot_wider(names_from = period_scenario, values_from = percent_reached_thresh)
   
@@ -288,32 +290,31 @@ if ("comp_table" %in% params$rpt_opts) {
 
   }
 
-  # print(p(paste(names(allsites_sum_tbl), collapse = ", ")))
+    
+  new_col_names <- names(allsites_sum_tbl) %>%
+      replace(1, "Site") %>%
+      gsub("^sc~", "Safe Chill<br/>", .) %>%
+      gsub("^rc~", "Required Chill<br/>", .) %>%
+      gsub("~", "<br/>", .)
   
-  new_col_names <- names(allsites_sum_tbl) %>% 
-    replace(1, "Site") %>% 
-    gsub("^sc~", "", .) %>% 
-    gsub("^rc", "", .) %>% 
-    gsub("~", "<br/>", .)
-  
-  # print(p(paste(new_col_names, collapse = ", ")))
-  
-  col_safe <- "#DDEBF5"
-  col_req <- "#DFF9DF"
-  allsites_sum_tbl <<- allsites_sum_tbl
-  
-  knitr::kable(allsites_sum_tbl, 
-               format = "html",
-               escape = FALSE,
-               col.names = new_col_names,
-               align = c("l", rep("c", ncol(allsites_sum_tbl) - 1))) %>%
-    kableExtra::add_header_above(c(" ", 
-                                   "Safe Chill" = ncol(safechill_onerow_tbl),
-                                   "Likelihood Req. Chill Reached" = ncol(reqchill_onerow_tbl)),
-                                 background = c("white", col_safe, col_req)) %>% 
-    kableExtra::column_spec(2:4, background = col_safe) %>% 
-    kableExtra::column_spec(5:7, background = col_req) %>% 
-    kableExtra::kable_styling()
+  print(tagList(DT::datatable(allsites_sum_tbl,
+                              rownames = FALSE,
+                              colnames = new_col_names,
+                              escape = FALSE,
+                              extensions = 'Buttons',
+                              options = list(
+                                paging = FALSE,
+                                searching = FALSE,
+                                fixedColumns = TRUE,
+                                autoWidth = TRUE,
+                                ordering = TRUE,
+                                info = FALSE,
+                                dom = 'tB',
+                                buttons = c('copy', 'csv')),
+                              height = "100%") %>% 
+                  DT::formatPercentage(columns = 5:7)
+                )
+        )
 }
 
 ```
