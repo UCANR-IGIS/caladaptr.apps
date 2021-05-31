@@ -8,7 +8,7 @@ library(ggplot2, quietly = TRUE)
 
 ## TODO Mark the priority GCMs with an asterik
 ## TODO Add info icons next to the form controls
-## TODO Add a DT table so the user can download the output values (??)
+## TODO Add a DT table so the user can download the output values
 
 ## Create a reactiveVal object which is where we'll 
 ## store  the coordinates when someone clicks the map
@@ -27,7 +27,7 @@ ui <- fluidPage(
   
   fluidRow(
     column(12,
-           HTML("<p>This <a href='https://shiny.rstudio.com/'>R Shiny</a> app demonstrates how to use <a href='https://ucanr-igis.github.io/caladaptr/'>caladaptR</a> to fetch data from Cal-Adapt. To use, select a point in California or Nevada on the map, and set the options for the climate data you want. Then click the Plot button.<br/>[<a href='https://github.com/UCANR-IGIS/caladaptr-res/blob/main/shiny/timeseries/app.R'>Source code</a> | <a href='https://github.com/UCANR-IGIS/caladaptr-res/blob/main/shiny/timeseries/timeseries_reactivity.png'>Reactivity map</a>].</p>"))
+           HTML("<p>This <a href='https://shiny.rstudio.com/'>R Shiny</a> app demonstrates how to use <a href='https://ucanr-igis.github.io/caladaptr/'>caladaptR</a> to fetch data from Cal-Adapt. To use, select a point in California or Nevada on the map, and set the options for the climate data you want. Then click the Plot button.<br/>[<a href='https://github.com/ucanr-igis/caladaptr.apps/blob/master/inst/shiny/timeseries/app.R'>Source code</a> | <a href='https://raw.githubusercontent.com/ucanr-igis/caladaptr.apps/master/inst/shiny/timeseries/timeseries_reactivity.png'>Reactivity map</a>].</p>"))
   ),
   
   fluidRow(
@@ -68,13 +68,10 @@ server <- function(input, output, session) {
   ## This will run every time cmd_plot is clicked
   pt_cap <- eventReactive(input$cmd_plot, {
     
-    ## Stop if there's no map coordinate saved
-    ## req(!is.null(pt_coords()))
-    
     if (is.null(pt_coords())) {
       output$txtCapMsg <- renderText("Please first click on the map to select a point, then try again.")
       
-      ## Return NULL
+      ## Stop here - return NULL
       NULL
       
     } else {

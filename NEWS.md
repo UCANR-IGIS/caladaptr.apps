@@ -1,3 +1,7 @@
+# caladaptr.apps 0.1.4
+
+* modest changes to timeseries (fixed hyperlinks in intro matter, added the reactivity map PNG graphic)
+
 # caladaptr.apps 0.1.3
 
 * modest changes to chill2
