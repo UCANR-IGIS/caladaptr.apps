@@ -1,3 +1,5 @@
+## Chill v1
+
 ## cat("\nTotal memory used at start is: ", round(as.numeric(pryr::mem_used()) / 1000000), "MB\n")
 
 ## Attach packages
@@ -198,7 +200,7 @@ ui <- function(request) {
       column(12,
              tags$br(),
              tags$p("4. Select the climate data to use for the ", tags$u("projected future"), class = "step topborder"),
-             sliderInput("prj_year", "Year range:", min = 2006, max = 2099, value = c(2040, 2060), sep = "", step = 1) %>% 
+             sliderInput("prj_year", "Year range:", min = 2006, max = 2099, value = c(2035, 2065), sep = "", step = 1) %>% 
                shinytag_add_class("iblock") %>% 
                helper(type = "markdown",
                       icon = "info-circle",
