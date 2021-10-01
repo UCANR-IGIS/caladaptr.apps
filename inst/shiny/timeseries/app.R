@@ -27,7 +27,7 @@ ui <- fluidPage(
   
   fluidRow(
     column(12,
-           HTML("<p>This <a href='https://shiny.rstudio.com/'>R Shiny</a> app demonstrates how to use <a href='https://ucanr-igis.github.io/caladaptr/'>caladaptR</a> to fetch data from Cal-Adapt. To use, select a point in California or Nevada on the map, and set the options for the climate data you want. Then click the Plot button.<br/>[<a href='https://github.com/ucanr-igis/caladaptr.apps/blob/master/inst/shiny/timeseries/app.R'>Source code</a> | <a href='https://raw.githubusercontent.com/ucanr-igis/caladaptr.apps/master/inst/shiny/timeseries/timeseries_reactivity.png'>Reactivity map</a>].</p>"))
+           HTML("<p>This <a href='https://shiny.rstudio.com/'>R Shiny</a> app demonstrates how to use <a href='https://ucanr-igis.github.io/caladaptr/'>caladaptR</a> to fetch data from Cal-Adapt. To use, select a point in California or Nevada on the map, and set the options for the climate data you want. Then click the Plot button. [<a href='https://github.com/ucanr-igis/caladaptr.apps/blob/master/inst/shiny/timeseries/app.R' target='_blank'>Source code</a> | <a href='https://raw.githubusercontent.com/ucanr-igis/caladaptr.apps/master/inst/shiny/timeseries/timeseries_reactivity.png' target='_blank'>Reactivity map</a>].</p>"))
   ),
   
   fluidRow(
