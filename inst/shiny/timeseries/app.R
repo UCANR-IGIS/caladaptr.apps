@@ -20,6 +20,9 @@ ylab_lst <- list(tasmin = "temp (F)",
 
 ui <- fluidPage(
   #if (file.exists("gtag_timeseries.js")) tags$head(includeHTML("gtag_timeseries.js")),
+  
+  tags$head(tags$style(type="text/css", ".leaflet-container {cursor: pointer !important;}")),
+  
   use_busy_spinner(spin = "atom", position = "bottom-left"),
   
   titlePanel(title = div(img(src="https://ucanr-igis.github.io/caladaptr/reference/figures/logo.gif", height = "75px"), "Demo App: Plot a Time Series of Annual Climate Data"), 
