@@ -1,3 +1,7 @@
+# caladaptr.apps 0.1.6 (2021-11-11)
+
+* minor updates to chill (Shiny progress panel now centered, fixed a broken link under Notes)
+
 # caladaptr.apps 0.1.5 (2021-09-30)
 
 * fixed some broken links in the timeseries app

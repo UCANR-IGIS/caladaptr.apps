@@ -20,7 +20,7 @@ library(caladaptr.apps)
 # Usage
 
 There is only one function, `ca_launch`. Use this function to launch
-apps saved in the package.
+Shiny apps saved in the package.
 
 ``` r
 library(caladaptr.apps)

@@ -30,7 +30,7 @@ library(caladaptr.apps)
 
 # Usage
 
-There is only one function, `ca_launch`. Use this function to launch apps saved in the package.
+There is only one function, `ca_launch`. Use this function to launch Shiny apps saved in the package.
 
 ```{r example, eval = FALSE}
 library(caladaptr.apps)

@@ -94,6 +94,7 @@ ui <- function(request) {
         div.error-msg {color:red; margin:1em 0;}
         div.dt-buttons {margin-top:5px;}
         div.space_above_below {margin:0.5em 0;}
+        div#shiny-notification-panel {right:0; left:0; margin:0 auto;}
         div#txtout_rpt_coords {color:#333; font-size:90%; font-style:italic;}
         div#txtout_rpt_locname {color:black; font-size:130%; font-weight:bold;}
         p.report_lead {color:#555; font-size:110%; font-weight:bold; font-style:italic; border-top:6px solid dodgerblue; padding-top:0.5em;}")
@@ -129,12 +130,13 @@ ui <- function(request) {
              tags$p("Introduction", class = "step topborder"),
              HTML("<p>This calculator can be used to compute end-of-season <a href='http://fruitsandnuts.ucdavis.edu/Weather_Services/chilling_accumulation_models/about_chilling_units/' target='_blank' rel='noopener'>chill portions</a> under projected climate scenarios. The calculator draws upon downscale projected climate data from the California 4th Climate Change assessment hosted on <a href='https://cal-adapt.org/' target='_blank' rel='noopener'>Cal-Adapt.org</a>.</p>"),
              HTML("<details>
-                  <summary style='color:blue; cursor:pointer; outline:none;'>Notes</summary>
+                  <summary style='color:#337ab7; cursor:pointer; outline:none;'>More details.</summary>
                   <ul>
                   <li>This is a pilot app for demonstration purposes only.</li>
                   <li>This calculator uses downscaled climate data from Cal-Adapt, which is available for California, Nevada, and a <a href='https://ucanr-igis.github.io/caladaptr-res/workshops/caladaptr_intro_dec20/slides_files/figure-slidy/unnamed-chunk-6-1.png' target='_blank'>little bit of neighboring states</a> in the western USA.</li>
-                  <li>This calculator uses chill <i>portions</i> rather than chill <i>hours</i>, because chill portions do a better job at predicting tree phenology. <a href='http://fruitsandnuts.ucdavis.edu/Weather_Services/chilling_accumulation_models/about_chilling_units/' target='_blank' rel='noopener'>More info</a>.</li>
-                  <li>RStudio users can run this and other demo Shiny apps directly from RStudio. See this <a href='https://github.com/ucanr-igis/caladaptr-res/blob/main/shiny/caladaptr_shinyapps_setup.R' target='_blank' rel='noopener'>setup script</a>. For additional details on the R code, see this <a href='https://ucanr-igis.github.io/caladaptr-res/notebooks/chill.nb.html' target='_blank' rel='noopener'>R Notebook</a>.</li>
+                  <li>This calculator computes chill <i>portions</i> rather than chill <i>hours</i>, because chill portions do a better job at predicting tree phenology. <a href='http://fruitsandnuts.ucdavis.edu/Weather_Services/chilling_accumulation_models/about_chilling_units/' target='_blank' rel='noopener'>More info</a>.</li>
+                  <li>Frequent user? RStudio users can run this and other sample Shiny apps directly from RStudio with the <a href='https://github.com/ucanr-igis/caladaptr.apps/' target='_blank' rel='noopener'>caladaptr.apps</a> package. Most users will get better performance running it locally.</li>
+                  <li>For additional details on the R code, see this <a href='https://ucanr-igis.github.io/caladaptr-res/notebooks/chill.nb.html' target='_blank' rel='noopener'>R Notebook</a>.</li>
                   <li>If the calculator unexpectedly disconnects while processing, the most likely reason is an out-of-memory error on the server. Refresh the page, reduce the number of GCMs or years, and try again. Or you can run the app locally from RStudio (recommended).</li>
                   <li>Questions or suggestions? Please email for <a href='mailto:caladaptr@gmail.com?subject=Chill Portions Shiny App'>feedback and support</a>.</li>
                   </ul>
