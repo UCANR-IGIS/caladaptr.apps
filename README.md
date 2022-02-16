@@ -3,19 +3,30 @@
 
 # caladaptr.apps
 
+<!-- badges: start -->
+
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental)
+[![caladaptr.apps status
+badge](https://ajlyons.r-universe.dev/badges/caladaptr.apps)](https://ajlyons.r-universe.dev)
+<!-- badges: end -->
+
 `caladaptr.apps` provides an easy way to run Shiny apps that use the
-[caladpatr](https://ucanr-igis.github.io/caladaptr/) package.
+[caladaptr](https://ucanr-igis.github.io/caladaptr/) package.
 
 # Installation
 
-``` r
-## Install caladaptr (which is a dependent package, not on CRAN)
-remotes::install_github("ucanr-igis/caladaptr")
+`caladaptr.apps` is on r-universe and can be installed as follows:
 
-## Install caladaptr.apps and all dependent packages
-remotes::install_github("ucanr-igis/caladaptr.apps")
-library(caladaptr.apps)
+``` r
+options(repos = c(ajlyons = 'https://ajlyons.r-universe.dev', CRAN = 'https://cloud.r-project.org'))
+install.packages('caladaptr.apps')
 ```
+
+Alternately you can install it directly from Github:
+
+    remotes::install_github("ucanr-igis/caladaptr")        ## install first
+    remotes::install_github("ucanr-igis/caladaptr.apps")
 
 # Usage
 

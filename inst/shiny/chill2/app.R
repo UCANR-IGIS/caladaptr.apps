@@ -36,6 +36,8 @@ requireNamespace("stringr")      ## use 2 functions in app.R (str_wrap and str_s
 requireNamespace("rmarkdown")    ## used to launch report.Rmd
 requireNamespace("kableExtra")   ## used in report.Rmd
 requireNamespace("tidyr")        ## pivot_* functions used here and report.Rmd
+requireNamespace("httr")
+
 
 ## requireNamespace("scales")   No longer needed - I format columns as percent using DT or manually with paste0()
 ## requireNamespace("chillR")   chillR is problematic to install on ShinyApps.io 
@@ -94,7 +96,37 @@ source('ca_make_hourly_temps.R')
 source('chillr_daylength.R')
 source('chillr_dynamic_model.R')
 
+## Setup development logging to capture the frequency of API connection errors which is an issue on 
+## ShinyApps.io. (will only work if log_setup.R is present) 
+log_fn <- "log_setup.R"
+log_yn <- file.exists(log_fn)
+cat("log_yn =", log_yn, "\n")
+if (log_yn) source(log_fn)
+
 gtag_fn <- "gtag_chill2.js"
+
+# ## Do a quick check upon initialization if we have a connection with the Cal-Adapt
+# endpts_resp <- try(httr::GET(url = ca_baseurl))
+# if (class(endpts_resp)[1] == "try-error") {
+#   if (log_yn) {
+#     log_entry_df <- data.frame(dt_utc = Sys.time(),
+#                                host = "unavailable",
+#                                path = "hard to say",
+#                                port = "no idea",
+#                                shiny_port = "",
+#                                event = "Could NOT connect to Cal-Adapt API at all")
+#     googlesheets4::sheet_append(ss = log_ss_id, data = log_entry_df, sheet = log_sheet)
+#   }
+#   
+# } else {
+#   ## No error
+#   if (log_yn) {
+#     log_entry_df <- data.frame(dt_utc = Sys.time(), host = "",
+#                                path = "", port = "",
+#                                shiny_port = "", event = "Connected to Cal-Adapt API!!")
+#     googlesheets4::sheet_append(ss = log_ss_id, data = log_entry_df, sheet = log_sheet)
+#   }
+# }
 
 ## report_memory("Memory usages after packages are loaded")
 
@@ -138,6 +170,7 @@ ui <- function(request) {
   
     fluidRow(
       column(12,
+             textOutput("txtout_connect_status") %>% shinytag_add_class("error-msg"),
              tags$p(),
              tags$div(tags$a(
                href = "https://cran.r-project.org/package=chillR", 
@@ -365,6 +398,41 @@ ui <- function(request) {
 
 server <- function(input, output, session) {
   
+  connection_ok <- reactive({
+    ## Do a quick check upon initialization if we have a connection with the Cal-Adapt
+    endpts_resp <- try(httr::GET(url = ca_baseurl))
+    good_connection <- class(endpts_resp)[1] != "try-error"
+    cat("good_connection = ", good_connection, "\n", sep = "")
+    good_connection
+  })
+  
+  output$txtout_connect_status <- renderText({
+    if (connection_ok()) {
+      if (log_yn) {
+        log_entry_df <- data.frame(dt_utc = Sys.time(), 
+                                   host = session$clientData$url_hostname,
+                                   path = session$clientData$url_pathname,
+                                   port = session$clientData$url_port,
+                                   shiny_port = shiny_port,
+                                   event = "Connected to Cal-Adapt API Upon Launch!!")
+        googlesheets4::sheet_append(ss = log_ss_id, data = log_entry_df, sheet = log_sheet)
+      }
+      NULL
+      
+    } else {
+      if (log_yn) {
+        log_entry_df <- data.frame(dt_utc = Sys.time(),
+                                   host = session$clientData$url_hostname,
+                                   path = session$clientData$url_pathname,
+                                   port = session$clientData$url_port,
+                                   shiny_port = shiny_port,
+                                   event = "Could NOT connect to Cal-Adapt API at all")
+        googlesheets4::sheet_append(ss = log_ss_id, data = log_entry_df, sheet = log_sheet)
+      }
+      "The Cal-Adapt API is not currently reachable. Please refresh the page in a few minutes."
+    }
+  })
+
   ###############################################
   ## Set some bookmarking options
   
@@ -630,6 +698,17 @@ server <- function(input, output, session) {
       site_info_lst <- list()
       progress_lst <- list()
             
+      if (log_yn) {
+        fetch_start_time <- Sys.time()
+        log_entry_df <- data.frame(dt_utc = fetch_start_time,
+                                   host = session$clientData$url_hostname,
+                                   path = session$clientData$url_pathname,
+                                   port = session$clientData$url_port,
+                                   shiny_port = shiny_port,
+                                   event = paste0("Going to fetch data for ", nrow(locs_tbl()), " locations(s)"))
+        googlesheets4::sheet_append(ss = log_ss_id, data = log_entry_df, sheet = log_sheet)
+      }
+      
       for (i in 1:nrow(locs_tbl())) {
         
         site_name <- locs_tbl()[i, 1, drop = TRUE]
@@ -658,10 +737,28 @@ server <- function(input, output, session) {
                     detail = "Daily min and max temp")
         
         ## Get values
-        pt_prj_dtemp_tbl2 <- ca_getvals_tbl(cur_prj_cap2, 
+        pt_prj_dtemp_tbl2 <- try(ca_getvals_tbl(cur_prj_cap2, 
                                            quiet = TRUE, 
-                                           shiny_progress = progress_lst[[i]]) 
-
+                                           shiny_progress = progress_lst[[i]]))
+        if (class(pt_prj_dtemp_tbl2)[1] == "try-error") {
+          if (log_yn) {
+            fetch_start_time <- Sys.time()
+            log_entry_df <- data.frame(dt_utc = fetch_start_time,
+                                       host = session$clientData$url_hostname,
+                                       path = session$clientData$url_pathname,
+                                       port = session$clientData$url_port,
+                                       shiny_port = shiny_port,
+                                       event = "Oh dear. An error occurred while fetching data")
+            googlesheets4::sheet_append(ss = log_ss_id, data = log_entry_df, sheet = log_sheet)
+            
+          }
+          
+          shinyjs::html(id = "txtout_rpt_coming", html = "")
+          shinyjs::html(id = "htmlout_rpt_link", html = "")
+          output$txtout_loc_lst_empty <- renderText("Oh dear. A network error occurred while fetching data. Please try again in about 30 minutes.")
+          return(NULL)
+        }
+        
         ## Add Year, Month and Day, temp_c, growing season; pivot tasmin
         progress_lst[[i]]$set(message = paste0(site_name, ". Processing:"), 
                      detail = "Formatting projected data columns")
@@ -1001,6 +1098,19 @@ server <- function(input, output, session) {
                                    comb_req_chill_pct_tbl = comb_req_chill_pct_tbl2)
 
       } ## for i in 1:nrow(locs_tbl())
+      
+      ## DONE FETCHING DATA
+      if (log_yn) {
+        cat("LETS LOG HOW LONG IT TOOK TO FETCH DATA! \n")
+        fetch_diff <- difftime(Sys.time(), fetch_start_time, units = "sec")
+        log_entry_df <- data.frame(dt_utc = Sys.time(),
+                                   host = session$clientData$url_hostname,
+                                   path = session$clientData$url_pathname,
+                                   port = session$clientData$url_port,
+                                   shiny_port = shiny_port,
+                                   event = paste0("Done! Total time to fetch data and generate summaries: ", round(as.numeric(fetch_diff),1), " secs"))
+        googlesheets4::sheet_append(ss = log_ss_id, data = log_entry_df, sheet = log_sheet)
+      }
       
       progress_rpt <- Progress$new()
       progress_rpt$set(message = "Generating report.", detail = "Please wait, this can take a minute")
