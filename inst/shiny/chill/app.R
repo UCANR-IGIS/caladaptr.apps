@@ -1,5 +1,9 @@
 ## Chill v1
 
+## If needed, (re)install caladaptr from Github *before* you publish the app to ShinyApps.io
+## This will tell reconnect how and where to get the package
+## remotes::install_github("ucanr-igis/caladaptr")
+
 ## cat("\nTotal memory used at start is: ", round(as.numeric(pryr::mem_used()) / 1000000), "MB\n")
 
 ## Attach packages
@@ -14,6 +18,9 @@ library(stringr)
 library(shinyhelper)
 library(dplyr)
 
+# cat("All packages loaded \n")
+# cat("Running caladaptR version:", as.character(packageVersion("caladaptr")), "\n")
+
 ## Check for required namespaces
 
 ## I am only using one or two functions from the following 
@@ -25,11 +32,11 @@ library(dplyr)
 ## In the case of DT, I choose to explicitly call those functions
 ## because there are identical functions in shiny which I explicitly don't want.
 
-## MEMORY HIT: THESE 4 PACKAGES CHEW 100 MB
 # requireNamespace("chillR")
 requireNamespace("DT")
 requireNamespace("lubridate")
 requireNamespace("scales")
+requireNamespace("shinyjs")
 
 ## The following three packages are *not* needed, but are dependencies of
 ## RMAWGEN. For some reason however the script which deploys this app
@@ -79,16 +86,21 @@ source('chillr_dynamic_model.R')
 
 ## report_memory("Memory usages after packages are loaded")
 
+gtag_fn <- "gtag_chill1.js"
+
 ui <- function(request) {
 
   fluidPage(
-    if (file.exists("gtag_chill.js")) tags$head(includeHTML("gtag_chill.js")),
+    
+    if (file.exists(gtag_fn)) tags$head(includeHTML(gtag_fn)),
+    
     tags$head(tags$style(type="text/css", 
         "p.step {color:black; font-weight:bold; font-size:120%; padding-top:5px;}
         p.topborder {border-top:3px solid lightgray;}
         h1.report {font-weight:bold; font-size:16px; padding-top:10px; border-top:1px solid lightgray;}
         h2 {font-weight:bold;}
         h3 {font-weight:bold;}
+        p.head480 {display: inline-block; width:480px; margin-right:10px;}
         .leaflet-container {cursor: pointer !important;}
         .iblock {display: inline-block;}   /* inline block for side-by-side UI elements  */
         div.error-msg {color:red; margin:1em 0;}
@@ -106,9 +118,11 @@ ui <- function(request) {
     tags$style(type="text/css",
                ".shinyhelper-container {display: inline-block; position: relative; margin-left: 1em;"),
     
+    shinyjs::useShinyjs(), 
+    
     titlePanel(title = "Projected Chill Portions Under Climate Change Calculator",
       windowTitle = "Chill Portions Calculator"),
-  
+    
     fluidRow(
       column(12,
              tags$p(),
@@ -128,13 +142,12 @@ ui <- function(request) {
                style = "margin-top:10px; float:right; width:65px;"),
              
              tags$p("Introduction", class = "step topborder"),
-             HTML("<p>This calculator can be used to compute end-of-season <a href='http://fruitsandnuts.ucdavis.edu/Weather_Services/chilling_accumulation_models/about_chilling_units/' target='_blank' rel='noopener'>chill portions</a> under projected climate scenarios. The calculator draws upon downscale projected climate data from the California 4th Climate Change assessment hosted on <a href='https://cal-adapt.org/' target='_blank' rel='noopener'>Cal-Adapt.org</a>.</p>"),
+             HTML("<p>This calculator can be used to compute accumulated <a href='https://fruitsandnuts.ucanr.edu/Weather_Services/chilling_accumulation_models/about_chilling_units/' target='_blank' rel='noopener'>chill portions</a> under projected climate scenarios. The calculator draws upon downscale projected climate data from the California 4th Climate Change assessment hosted on <a href='https://cal-adapt.org/' target='_blank' rel='noopener'>Cal-Adapt.org</a>.</p>"),
              HTML("<details>
-                  <summary style='color:#337ab7; cursor:pointer; outline:none;'>More details.</summary>
+                  <summary style='color:#337ab7; cursor:pointer; outline:none;'>Details.</summary>
                   <ul>
-                  <li>This is a pilot app for demonstration purposes only.</li>
                   <li>This calculator uses downscaled climate data from Cal-Adapt, which is available for California, Nevada, and a <a href='https://ucanr-igis.github.io/caladaptr-res/workshops/caladaptr_intro_dec20/slides_files/figure-slidy/unnamed-chunk-6-1.png' target='_blank'>little bit of neighboring states</a> in the western USA.</li>
-                  <li>This calculator computes chill <i>portions</i> rather than chill <i>hours</i>, because chill portions do a better job at predicting tree phenology. <a href='http://fruitsandnuts.ucdavis.edu/Weather_Services/chilling_accumulation_models/about_chilling_units/' target='_blank' rel='noopener'>More info</a>.</li>
+                  <li>This calculator computes chill <i>portions</i> rather than chill <i>hours</i>, because chill portions do a better job at predicting tree phenology. <a href='https://fruitsandnuts.ucanr.edu/Weather_Services/chilling_accumulation_models/about_chilling_units/' target='_blank' rel='noopener'>More info</a>.</li>
                   <li>Frequent user? RStudio users can run this and other sample Shiny apps directly from RStudio with the <a href='https://github.com/ucanr-igis/caladaptr.apps/' target='_blank' rel='noopener'>caladaptr.apps</a> package. Most users will get better performance running it locally.</li>
                   <li>For additional details on the R code, see this <a href='https://ucanr-igis.github.io/caladaptr-res/notebooks/chill.nb.html' target='_blank' rel='noopener'>R Notebook</a>.</li>
                   <li>If the calculator unexpectedly disconnects while processing, the most likely reason is an out-of-memory error on the server. Refresh the page, reduce the number of GCMs or years, and try again. Or you can run the app locally from RStudio (recommended).</li>
@@ -179,52 +192,57 @@ ui <- function(request) {
     fluidRow(
       column(12,
              tags$br(),
-             tags$p("3. Select the climate data to use as the ", tags$u("historic baseline"), class = "step topborder"),
-             sliderInput("base_year", "Year range:", min = 1950, max = 2005, value = c(1975, 2005), sep = "", step = 1) %>% 
-               shinytag_add_class("iblock") %>% 
-               helper(type = "markdown",
-                      icon = "info-circle",
-                      content = "years_select",
-                      buttonLabel = "OK",
-                      size = "m"),
-             htmlOutput("htmlout_basetime_msg") %>% shinytag_add_class("error-msg"),
-             selectInput("base_gcm", label = "GCMs:", choices = gcms[1:10], selected = gcms[1:4], multiple = TRUE) %>% 
-               shinytag_add_class("iblock") %>% 
-               helper(type = "markdown",
-                      icon = "info-circle",
-                      content = "base_gcm",
-                      buttonLabel = "OK",
-                      size = "l"),
-             selectInput("base_scenario", label = "Emissions scenario:", choices = scenarios[3], selected = scenarios[3], multiple = FALSE)
+             tags$p("3. Select the climate data to use as the ", tags$em("historic baseline"), class = "step topborder head480"),
+             actionButton(inputId = "btn_hist_toggle", label = "", icon = icon("cog")),
+             
+             div(sliderInput("base_year", "Year range:", min = 1950, max = 2005, value = c(1975, 2005), sep = "", step = 1) %>% 
+                   shinytag_add_class("iblock") %>% 
+                   helper(type = "markdown",
+                          icon = "info-circle",
+                          content = "years_select",
+                          buttonLabel = "OK",
+                          size = "m"),
+                 htmlOutput("htmlout_basetime_msg") %>% shinytag_add_class("error-msg"),
+                 selectInput("base_gcm", label = "GCMs:", choices = gcms[1:10], selected = gcms[1:4], multiple = TRUE) %>% 
+                   shinytag_add_class("iblock") %>% 
+                   helper(type = "markdown",
+                          icon = "info-circle",
+                          content = "base_gcm",
+                          buttonLabel = "OK",
+                          size = "l"),
+                 selectInput("base_scenario", label = "Emissions scenario:", choices = scenarios[3], selected = scenarios[3], multiple = FALSE),
+                 id = "hist_opts_div")
       )
     ),
     fluidRow(
       column(12,
              tags$br(),
-             tags$p("4. Select the climate data to use for the ", tags$u("projected future"), class = "step topborder"),
-             sliderInput("prj_year", "Year range:", min = 2006, max = 2099, value = c(2035, 2065), sep = "", step = 1) %>% 
-               shinytag_add_class("iblock") %>% 
-               helper(type = "markdown",
-                      icon = "info-circle",
-                      content = "year_select",
-                      buttonLabel = "OK",
-                      size = "m"),
-             htmlOutput("htmlout_prjtime_msg") %>% shinytag_add_class("error-msg"),
-             selectInput("prj_gcm", label = "GCMs:", choices = gcms[1:10], selected = gcms[1:4], multiple = TRUE) %>% 
-               shinytag_add_class("iblock") %>% 
-               helper(type = "markdown",
-                      icon = "info-circle",
-                      content = "prj_gcm",
-                      buttonLabel = "OK",
-                      size = "m"),
-             selectInput("prj_scenario", label = "Emissions scenarios:", choices = scenarios[1:2], selected = scenarios[1:2], multiple = TRUE) %>% 
-               shinytag_add_class("iblock") %>% 
-               helper(type = "markdown",
-                      icon = "info-circle",
-                      content = "prj_scenario",
-                      buttonLabel = "OK",
-                      size = "m")
-             
+             tags$p("4. Select the climate data to use for the ", tags$em("projected future"), class = "step topborder head480"),
+             actionButton(inputId = "btn_prj_toggle", label = "", icon = icon("cog")),
+             div(sliderInput("prj_year", "Year range:", min = 2006, max = 2099, value = c(2035, 2065), sep = "", step = 1) %>% 
+                   shinytag_add_class("iblock") %>% 
+                   helper(type = "markdown",
+                          icon = "info-circle",
+                          content = "year_select",
+                          buttonLabel = "OK",
+                          size = "m"),
+                 htmlOutput("htmlout_prjtime_msg") %>% shinytag_add_class("error-msg"),
+                 selectInput("prj_gcm", label = "GCMs:", choices = gcms[1:10], selected = gcms[1:4], multiple = TRUE) %>% 
+                   shinytag_add_class("iblock") %>% 
+                   helper(type = "markdown",
+                          icon = "info-circle",
+                          content = "prj_gcm",
+                          buttonLabel = "OK",
+                          size = "m"),
+                 selectInput("prj_scenario", label = "Emissions scenarios:", choices = scenarios[1:2], selected = scenarios[1:2], multiple = TRUE) %>% 
+                   shinytag_add_class("iblock") %>% 
+                   helper(type = "markdown",
+                          icon = "info-circle",
+                          content = "prj_scenario",
+                          buttonLabel = "OK",
+                          size = "m"),
+                 id = "prj_opts_div")
+
       )
     ),
     
@@ -366,6 +384,28 @@ server <- function(input, output, session) {
   ## Add an observer to watch out for clicks on the shinyhelper buttons.
   ## The md files will be located in the default 'helpfiles' subdir
   observe_helpers()
+  
+  ## Hide the optional sections initially
+  shinyjs::hide(id = "hist_opts_div", anim = TRUE)
+  shinyjs::hide(id = "prj_opts_div", anim = TRUE)
+  
+  ## observe the button being pressed
+  observeEvent(input$btn_hist_toggle, {
+    if(input$btn_hist_toggle %% 2 == 1){
+      shinyjs::show(id = "hist_opts_div", anim = TRUE)
+    }else{
+      shinyjs::hide(id = "hist_opts_div", anim = TRUE)
+    }
+  })
+
+  ## observe the button being pressed
+  observeEvent(input$btn_prj_toggle, {
+    if(input$btn_prj_toggle %% 2 == 1){
+      shinyjs::show(id = "prj_opts_div", anim = TRUE)
+    }else{
+      shinyjs::hide(id = "prj_opts_div", anim = TRUE)
+    }
+  })
   
   ## Set the initial map extent (called once but never called again after that)
   output$mymap <- renderLeaflet({
@@ -592,7 +632,7 @@ server <- function(input, output, session) {
     progress$set(value = 0, message = "Fetching data from Cal-Adapt: ", detail = "Projected daily min and max temp")
     
     ## Get values
-    pt_prj_dtemp_tbl <- ca_getvals_tbl(pt_prj_cap(), quiet = TRUE, shiny_progress = progress) 
+    pt_prj_dtemp_tbl <- ca_getvals_tbl(pt_prj_cap(), quiet = TRUE, shiny_progress = progress, timeout = 30) 
 
     ## Add Year, Month and Day, temp_c, growing season; pivot tasmin
     progress$set(message = "Processing Projected Data:", detail = "Formatting columns")
@@ -648,7 +688,7 @@ server <- function(input, output, session) {
     on.exit(progress$close())
     progress$set(message = "Fetching data from Cal-Adapt: ", detail = "Historic daily min and max temp", value = 0)
     
-    pt_base_dtemp_tbl <- ca_getvals_tbl(pt_base_cap(), quiet = TRUE, shiny_progress = progress) 
+    pt_base_dtemp_tbl <- ca_getvals_tbl(pt_base_cap(), quiet = TRUE, shiny_progress = progress, timeout = 30) 
     
     progress$set(message = "Processing Historic Data:", detail = "Formatting columns")
 

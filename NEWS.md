@@ -1,3 +1,7 @@
+# caladaptr.apps 0.1.7 (2022-02-26)
+
+* update to chill (fixed broken links under Notes and help dialogs; climate data options closed by default)
+
 # caladaptr.apps 0.1.6 (2021-11-11)
 
 * minor updates to chill (Shiny progress panel now centered, fixed a broken link under Notes)

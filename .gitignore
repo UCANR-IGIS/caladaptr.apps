@@ -8,3 +8,7 @@
 report.html
 *rsconnect*
 gtag_chill*.js
+log_setup.R
+inst/shiny/chill/~*.R
+inst/shiny/chill2/.secrets/*
+.gitignore
